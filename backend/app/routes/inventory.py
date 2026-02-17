@@ -113,7 +113,7 @@ def import_database():
                 db.session.add(app)
 
         # Import storage (depends on hardware and VMs)
-        storage_shares_map = {}  # Store shares for later import
+        storage_entries = []  # Track storage objects with their share data
         if 'storage' in import_data:
             for item in import_data['storage']:
                 # Extract shares before cleaning
@@ -121,21 +121,19 @@ def import_database():
                 cleaned_item = clean_item(item)
                 storage = Storage(**cleaned_item)
                 db.session.add(storage)
-                # Store shares for this storage (will use storage.id after flush)
-                if shares_data:
-                    storage_shares_map[id(storage)] = shares_data
-        
+                storage_entries.append((storage, shares_data))
+
         db.session.flush()  # Get IDs for storage
 
         # Now import shares (depends on storage)
-        for storage in Storage.query.all():
-            storage_obj_id = id(storage)
-            if storage_obj_id in storage_shares_map:
-                for share_data in storage_shares_map[storage_obj_id]:
-                    cleaned_share = clean_item(share_data)
-                    cleaned_share['storage_id'] = storage.id  # Set the correct storage_id
-                    share = Share(**cleaned_share)
-                    db.session.add(share)
+        for storage, shares_data in storage_entries:
+            if not shares_data:
+                continue
+            for share_data in shares_data:
+                cleaned_share = clean_item(share_data)
+                cleaned_share['storage_id'] = storage.id  # Set the correct storage_id
+                share = Share(**cleaned_share)
+                db.session.add(share)
 
         # Import networks
         if 'networks' in import_data:
