@@ -18,11 +18,15 @@ COPY backend/ .
 # Copy built frontend into Flask static directory
 COPY --from=frontend-build /build/dist/ /app/static/
 
-RUN mkdir -p /data
+RUN useradd --system --create-home --uid 10001 appuser \
+    && mkdir -p /data \
+    && chown -R appuser:appuser /app /data
 
 ENV DATABASE_URL=sqlite:////data/homelab-hub.db
 ENV FLASK_ENV=production
 
 EXPOSE 8000
+
+USER appuser
 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--timeout", "120", "wsgi:app"]
