@@ -20,6 +20,15 @@ htmlcov/
 *.sqlite3
 data/
 
+# Runtime exports/backups (can contain full homelab inventory)
+homelab-export*.json
+export*.json
+*backup*.json
+backups/
+backup/
+*.dump
+*.bak
+
 # Node.js
 node_modules/
 dist/

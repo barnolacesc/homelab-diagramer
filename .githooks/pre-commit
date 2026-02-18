@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${ALLOW_SENSITIVE_COMMIT:-}" == "1" ]]; then
+  echo "pre-commit: ALLOW_SENSITIVE_COMMIT=1 set, skipping sensitive file checks."
+  exit 0
+fi
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+if [[ -z "${staged_files}" ]]; then
+  exit 0
+fi
+
+blocked_files=()
+while IFS= read -r file; do
+  [[ -z "${file}" ]] && continue
+  case "${file}" in
+    data/*|*.db|*.sqlite|*.sqlite3|*.dump|*.bak|*.backup|.env|.env.*|homelab-export*.json|export*.json|*backup*.json)
+      if [[ "${file}" == "data/.gitkeep" ]]; then
+        continue
+      fi
+      blocked_files+=("${file}")
+      ;;
+  esac
+done <<< "${staged_files}"
+
+if (( ${#blocked_files[@]} > 0 )); then
+  echo "ERROR: commit blocked by sensitive file guard."
+  echo "The following staged files look like runtime data, secrets, or backups:"
+  for file in "${blocked_files[@]}"; do
+    echo "  - ${file}"
+  done
+  echo
+  echo "Unstage/remove them or update .gitignore if needed."
+  echo "Emergency override (not recommended): ALLOW_SENSITIVE_COMMIT=1 git commit ..."
+  exit 1
+fi
+
+exit 0
